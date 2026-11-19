@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZoroCut — Corta el fondo como Zoro</title>
+<meta name="description" content="Quita el fondo de tus imagenes y mejora su calidad con IA.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20width='64'%20height='64'%20rx='14'%20fill='%2307110c'/%3E%3Cpath%20d='M14%2050L44%2020l6%206L20%2056z'%20fill='%2334d399'/%3E%3Cpath%20d='M42%2016l8%208%204-4-8-8z'%20fill='%23a3e635'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M6 42 34 14l4 4L10 46z" fill="var(--green)"/>
+      <path d="M14 42 42 14l4 4L18 46z" fill="var(--lime)"/>
+      <path d="M10 30 30 10l4 4L14 34z" fill="#e5e7eb"/>
+    </svg>
+    <div>
+      <h1>ZoroCut</h1>
+      <p class="tag">Tres espadas, cero fondo</p>
+    </div>
+  </div>
+  <span class="badge">IA local</span>
+</header>
+
+<main class="layout">
+  <section class="panel">
+    <label class="dropzone" id="dropzone">
+      <input class="sr-only" id="file" type="file" accept="image/*">
+      <span class="dz-title">Arrastra tu imagen o haz clic</span>
+      <span class="dz-hint">PNG, JPG o WEBP · hasta 25 MB</span>
+    </label>
+
+    <div class="controls">
+      <label>Modelo
+        <select id="model">
+          <option value="u2net">u2net (equilibrado)</option>
+          <option value="u2netp">u2netp (ligero)</option>
+          <option value="isnet-general-use">isnet (detalle)</option>
+        </select>
+      </label>
+      <label>Escala <output id="scaleOut">2</output>
+        <input id="scale" type="range" min="1" max="4" step="0.5" value="2">
+      </label>
+      <label>Nitidez <output id="sharpenOut">1.0</output>
+        <input id="sharpen" type="range" min="0" max="2" step="0.1" value="1">
+      </label>
+      <label>Formato
+        <select id="fmt">
+          <option value="png">PNG</option>
+          <option value="webp">WEBP</option>
+          <option value="jpeg">JPEG</option>
+        </select>
+      </label>
+    </div>
+
+    <label class="check"><input id="alpha" type="checkbox"> Bordes suaves (alpha matting)</label>
+
+    <div class="actions">
+      <button id="btnRemove" class="btn btn-primary" disabled>Quitar fondo</button>
+      <button id="btnUpscale" class="btn btn-ghost" disabled>Mejorar calidad</button>
+      <button id="btnBoth" class="btn btn-ghost" disabled>Ambos</button>
+    </div>
+
+    <p id="status" class="status" role="status"></p>
+  </section>
+
+  <section class="panel stage">
+    <div class="tabs">
+      <button id="tabBefore" class="tab is-active">Original</button>
+      <button id="tabAfter" class="tab">Resultado</button>
+      <a id="download" class="download is-disabled" download>Descargar</a>
+    </div>
+    <div class="checker viewport">
+      <img id="imgBefore" alt="Imagen original" hidden>
+      <img id="imgAfter" alt="Imagen sin fondo" hidden>
+      <p id="empty" class="empty">Aun no hay imagen</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">Procesado en tu maquina con rembg y ONNX. Nada sale de aqui.</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
