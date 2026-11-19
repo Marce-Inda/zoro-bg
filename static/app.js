@@ -1,6 +1,13 @@
 const $ = (id) => document.getElementById(id);
 
-const state = { file: null, beforeUrl: null, afterUrl: null, mode: "before", busy: false };
+const state = {
+  file: null,
+  beforeUrl: null,
+  afterUrl: null,
+  mode: "before",
+  busy: false,
+  comparePct: 50,
+};
 
 const els = {
   dropzone: $("dropzone"),
@@ -18,10 +25,20 @@ const els = {
   status: $("status"),
   tabBefore: $("tabBefore"),
   tabAfter: $("tabAfter"),
+  tabCompare: $("tabCompare"),
   download: $("download"),
   imgBefore: $("imgBefore"),
   imgAfter: $("imgAfter"),
-  empty: $("empty"),
+  emptyCompare: $("emptyCompare"),
+  progressWrap: $("progressWrap") || null,
+  progressBar: $("progressBar") || null,
+  progressText: $("progressText") || null,
+  progressPct: $("progressPct") || null,
+  compareRange: $("compareRange") || null,
+  compareBefore: $(".compare-before") || null,
+  compareAfter: $(".compare-after") || null,
+  compareHandle: $(".compare-handle") || null,
+  toasts: $("toasts") || null,
 };
 
 const EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
@@ -29,6 +46,18 @@ const EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
 function setStatus(text, kind) {
   els.status.textContent = text;
   els.status.className = "status" + (kind ? " is-" + kind : "");
+}
+
+function showToast(text, kind) {
+  if (!els.toasts) return;
+  const toast = document.createElement("div");
+  toast.className = "toast is-" + kind;
+  toast.textContent = text;
+  els.toasts.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 250);
+  }, 3500);
 }
 
 function setBusy(busy) {
@@ -39,7 +68,44 @@ function setBusy(busy) {
   els.dropzone.classList.toggle("is-busy", busy);
   if (busy) {
     setStatus("Procesando... la primera vez puede tardar en descargar el modelo.", "busy");
+    showToast("Procesando imagen...", "busy");
+    startFakeProgress();
+  } else {
+    stopFakeProgress();
+    if (els.progressWrap) els.progressWrap.style.display = "none";
   }
+}
+
+let progressInterval = null;
+let progressValue = 0;
+
+function startFakeProgress() {
+  if (progressInterval) return;
+  progressValue = 0;
+  if (els.progressWrap) els.progressWrap.style.display = "flex";
+  progressInterval = setInterval(() => {
+    progressValue += Math.random() * 12;
+    if (progressValue > 92) progressValue = 92;
+    setProgress(progressValue);
+  }, 200);
+}
+
+function stopFakeProgress() {
+  if (progressInterval) {
+    clearInterval(progressInterval);
+    progressInterval = null;
+  }
+  progressValue = 0;
+  setProgress(100);
+  setTimeout(() => {
+    if (els.progressWrap) els.progressWrap.style.display = "none";
+  }, 400);
+}
+
+function setProgress(pct) {
+  pct = Math.round(Math.max(0, Math.min(100, pct)));
+  if (els.progressBar) els.progressBar.style.width = pct + "%";
+  if (els.progressPct) els.progressPct.textContent = pct + "%";
 }
 
 function releaseUrl(url) {
@@ -49,11 +115,24 @@ function releaseUrl(url) {
 function render() {
   const hasBefore = Boolean(state.beforeUrl);
   const hasAfter = Boolean(state.afterUrl);
-  els.imgBefore.hidden = state.mode !== "before" || !hasBefore;
-  els.imgAfter.hidden = state.mode !== "after" || !hasAfter;
-  els.empty.hidden = state.mode === "after" ? hasAfter : hasBefore;
+  const showCompare = state.mode === "compare" && hasBefore && hasAfter;
+
+  els.imgBefore.hidden = state.mode !== "before" && state.mode !== "compare" || !hasBefore;
+  els.imgAfter.hidden = state.mode !== "after" && state.mode !== "compare" || !hasAfter;
+
+  if (els.emptyCompare) {
+    els.emptyCompare.hidden = state.mode === "after" ? hasAfter : state.mode === "compare" ? false : hasBefore;
+  }
+
   els.tabBefore.classList.toggle("is-active", state.mode === "before");
   els.tabAfter.classList.toggle("is-active", state.mode === "after");
+  els.tabCompare.classList.toggle("is-active", state.mode === "compare");
+
+  if (els.compareWrap) {
+    els.compareWrap.classList.toggle("is-hidden", state.mode !== "compare");
+  }
+
+  applyCompare();
 }
 
 function showTab(mode) {
@@ -61,14 +140,25 @@ function showTab(mode) {
   render();
 }
 
+function applyCompare() {
+  if (!els.compareRange || !els.compareBefore || !els.compareAfter || !els.compareHandle) return;
+  const pct = state.comparePct;
+  els.compareRange.value = pct;
+  els.compareBefore.style.clipPath = "inset(0 " + (100 - pct) + "% 0 0)";
+  els.compareAfter.style.clipPath = "inset(0 0 0 " + pct + "%)";
+  els.compareHandle.style.left = pct + "%";
+}
+
 function setFile(file) {
   if (!file) return;
   if (!file.type.startsWith("image/")) {
     setStatus("Ese archivo no es una imagen.", "error");
+    showToast("Ese archivo no es una imagen.", "error");
     return;
   }
   if (file.size > 25 * 1024 * 1024) {
     setStatus("Archivo demasiado grande (max. 25 MB).", "error");
+    showToast("Archivo demasiado grande.", "error");
     return;
   }
   releaseUrl(state.beforeUrl);
@@ -85,6 +175,7 @@ function setFile(file) {
     button.disabled = false;
   }
   setStatus("Imagen lista: " + file.name, "ok");
+  showToast("Imagen cargada: " + file.name, "ok");
 }
 
 async function run(endpoint) {
@@ -118,8 +209,10 @@ async function run(endpoint) {
     els.download.classList.remove("is-disabled");
     showTab("after");
     setStatus("Listo. " + Math.round(blob.size / 1024) + " KB generados.", "ok");
+    showToast("Proceso completado.", "ok");
   } catch (error) {
     setStatus(error.message || "Algo salio mal.", "error");
+    showToast(error.message || "Algo salio mal.", "error");
   } finally {
     setBusy(false);
   }
@@ -154,6 +247,9 @@ els.sharpen.addEventListener("input", syncRanges);
 
 els.tabBefore.addEventListener("click", () => showTab("before"));
 els.tabAfter.addEventListener("click", () => showTab("after"));
+els.tabCompare.addEventListener("click", () => {
+  if (state.beforeUrl && state.afterUrl) showTab("compare");
+});
 
 els.btnRemove.addEventListener("click", () => run("/api/remove"));
 els.btnUpscale.addEventListener("click", () => run("/api/upscale"));
@@ -162,6 +258,13 @@ els.btnBoth.addEventListener("click", () => run("/api/process"));
 els.download.addEventListener("click", (event) => {
   if (els.download.classList.contains("is-disabled")) event.preventDefault();
 });
+
+if (els.compareRange) {
+  els.compareRange.addEventListener("input", (event) => {
+    state.comparePct = parseInt(event.target.value, 10);
+    applyCompare();
+  });
+}
 
 syncRanges();
 render();

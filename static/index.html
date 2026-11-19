@@ -63,6 +63,16 @@
       <button id="btnBoth" class="btn btn-ghost" disabled>Ambos</button>
     </div>
 
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span id="progressText">Procesando</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+    </div>
+
     <p id="status" class="status" role="status"></p>
   </section>
 
@@ -70,17 +80,30 @@
     <div class="tabs">
       <button id="tabBefore" class="tab is-active">Original</button>
       <button id="tabAfter" class="tab">Resultado</button>
+      <button id="tabCompare" class="tab">Comparar</button>
       <a id="download" class="download is-disabled" download>Descargar</a>
     </div>
-    <div class="checker viewport">
-      <img id="imgBefore" alt="Imagen original" hidden>
-      <img id="imgAfter" alt="Imagen sin fondo" hidden>
-      <p id="empty" class="empty">Aun no hay imagen</p>
+    <div class="compare-wrap">
+      <div class="compare-slider">
+        <div class="compare-pane compare-before">
+          <img id="imgBefore" alt="Imagen original" hidden>
+          <div class="compare-label">Original</div>
+        </div>
+        <div class="compare-pane compare-after">
+          <img id="imgAfter" alt="Imagen sin fondo" hidden>
+          <div class="compare-label">Resultado</div>
+        </div>
+        <input id="compareRange" type="range" min="0" max="100" value="50" class="compare-range">
+        <div class="compare-handle"></div>
+      </div>
+      <p id="emptyCompare" class="empty">Aun no hay imagen</p>
     </div>
   </section>
 </main>
 
 <footer class="foot">Procesado en tu maquina con rembg y ONNX. Nada sale de aqui.</footer>
+
+<div id="toasts" class="toasts" aria-live="polite" aria-atomic="true"></div>
 
 <script src="/app.js"></script>
 </body>
