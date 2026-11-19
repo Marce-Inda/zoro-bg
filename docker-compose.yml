@@ -1,0 +1,10 @@
+services:
+  zoro-bg:
+    build: .
+    container_name: zoro-bg
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
