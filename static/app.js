@@ -7,6 +7,7 @@ const state = {
   mode: "before",
   busy: false,
   comparePct: 50,
+  history: [],
 };
 
 const els = {
@@ -39,6 +40,7 @@ const els = {
   compareAfter: $(".compare-after") || null,
   compareHandle: $(".compare-handle") || null,
   toasts: $("toasts") || null,
+  historyGrid: $("historyGrid") || null,
 };
 
 const EXT = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
@@ -149,6 +151,63 @@ function applyCompare() {
   els.compareHandle.style.left = pct + "%";
 }
 
+function addToHistory(url, name) {
+  state.history.unshift({ url: url, name: name, id: Date.now() });
+  if (state.history.length > 20) state.history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  if (!els.historyGrid) return;
+  els.historyGrid.innerHTML = "";
+  if (state.history.length === 0) {
+    els.historyGrid.innerHTML = '<p class="history-empty">Aun no hay imagenes procesadas.</p>';
+    return;
+  }
+  for (const item of state.history) {
+    const el = document.createElement("div");
+    el.className = "history-item";
+    el.title = item.name;
+    el.tabIndex = 0;
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", "Restaurar: " + item.name);
+    const img = document.createElement("img");
+    img.src = item.url;
+    img.alt = item.name;
+    img.loading = "lazy";
+    const badge = document.createElement("span");
+    badge.className = "history-badge";
+    badge.textContent = item.name.length > 12 ? item.name.slice(0, 12) + "…" : item.name;
+    el.appendChild(img);
+    el.appendChild(badge);
+    el.addEventListener("click", () => restoreFromHistory(item.url, item.name));
+    el.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        restoreFromHistory(item.url, item.name);
+      }
+    });
+    els.historyGrid.appendChild(el);
+  }
+}
+
+function restoreFromHistory(url, name) {
+  releaseUrl(state.beforeUrl);
+  releaseUrl(state.afterUrl);
+  state.beforeUrl = url;
+  state.afterUrl = null;
+  els.imgBefore.src = state.beforeUrl;
+  els.imgAfter.removeAttribute("src");
+  els.download.removeAttribute("href");
+  els.download.classList.add("is-disabled");
+  showTab("before");
+  for (const button of [els.btnRemove, els.btnUpscale, els.btnBoth]) {
+    button.disabled = false;
+  }
+  setStatus("Restaurado: " + name, "ok");
+  showToast("Restaurado: " + name, "ok");
+}
+
 function setFile(file) {
   if (!file) return;
   if (!file.type.startsWith("image/")) {
@@ -210,6 +269,7 @@ async function run(endpoint) {
     showTab("after");
     setStatus("Listo. " + Math.round(blob.size / 1024) + " KB generados.", "ok");
     showToast("Proceso completado.", "ok");
+    addToHistory(state.afterUrl, state.file.name);
   } catch (error) {
     setStatus(error.message || "Algo salio mal.", "error");
     showToast(error.message || "Algo salio mal.", "error");
@@ -268,3 +328,4 @@ if (els.compareRange) {
 
 syncRanges();
 render();
+renderHistory();
